@@ -4,7 +4,10 @@
 & {
 $Server  = '157.180.80.24'
 $HostKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF6T1lYuPI2YmkaUxstN20hoXKSwSoOYzMz40ap/QfxA'
-$Bot     = 'Tsamha_bot'
+# A person with their own setup on the server sets these two before running: their name there and their own bot.
+$Person  = if ($env:TSAMHA_PERSON -match '^[a-z][a-z0-9-]{0,30}$') { $env:TSAMHA_PERSON } else { '' }
+$User    = if ($Person) { $Person } else { 'claude' }
+$Bot     = if ($env:TSAMHA_BOT -match '^[A-Za-z0-9_]{5,32}$') { $env:TSAMHA_BOT } else { 'Tsamha_bot' }
 $OpenSsh = 'C:\Windows\System32\OpenSSH'
 $Ssh     = "$OpenSsh\ssh.exe"
 $SshDir  = "$HOME\.ssh"
@@ -41,7 +44,7 @@ if ($agent.StartType -ne 'Automatic' -or $agent.Status -ne 'Running') {
 
 $config = "$SshDir\config"
 if (-not ((Test-Path $config) -and (Select-String -Path $config -Pattern '^\s*Host\s+tzama\s*$' -Quiet))) {
-    Add-Content -Path $config -Encoding ascii -Value "Host tzama`n    HostName $Server`n    User claude`n    IdentityFile ~/.ssh/id_tsamha`n    IdentitiesOnly yes"
+    Add-Content -Path $config -Encoding ascii -Value "Host tzama`n    HostName $Server`n    User $User`n    IdentityFile ~/.ssh/id_tsamha`n    IdentitiesOnly yes"
 }
 $known = "$SshDir\known_hosts"
 if (-not ((Test-Path $known) -and (Select-String -Path $known -SimpleMatch "$Server $HostKey" -Quiet))) {
@@ -50,7 +53,8 @@ if (-not ((Test-Path $known) -and (Select-String -Path $known -SimpleMatch "$Ser
 
 # Waits for Enter rather than polling: repeated refused logins get this address banned by fail2ban.
 if ($newKey -or -not (Connected)) {
-    $type, $b64 = (Get-Content "$Key.pub" -Raw).Trim() -split '\s+'
+    $parts = (Get-Content "$Key.pub" -Raw).Trim() -split '\s+'
+    $type = $parts[0]; $b64 = $parts[1]
     Set-Clipboard "/addpc $Name $type $b64"
     Write-Host "`nA line for the bot is now on the clipboard. Paste and send it to @$Bot in Telegram." -ForegroundColor Cyan
     Write-Host "Check that the bot shows this same fingerprint:"
@@ -76,5 +80,7 @@ if (-not (Test-Path "$repo\.git")) {
 } else {
     git -C $repo pull -q --ff-only
 }
-powershell -NoProfile -ExecutionPolicy Bypass -File "$repo\tools\pc_setup\setup_local.ps1" -Root $Root
+$more = @()
+if ($Person) { $more = @('-Person', $Person) }
+powershell -NoProfile -ExecutionPolicy Bypass -File "$repo\tools\pc_setup\setup_local.ps1" -Root $Root @more
 }
