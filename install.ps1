@@ -75,7 +75,7 @@ $Root = if ($desktop -match 'OneDrive') { "$HOME\projects" } else { "$desktop\pr
 New-Item -ItemType Directory -Force $Root | Out-Null
 $repo = "$Root\tsamha-agents"
 if (-not (Test-Path "$repo\.git")) {
-    git clone -c core.autocrlf=false -c "core.sshCommand=$($Ssh -replace '\\', '/')" tzama:/srv/git/tsamha-agents.git $repo
+    git clone -c core.autocrlf=false -c core.longpaths=true -c "core.sshCommand=$($Ssh -replace '\\', '/')" tzama:/srv/git/tsamha-agents.git $repo
     if ($LASTEXITCODE -ne 0) { Write-Host 'Could not copy the repo.' -ForegroundColor Red; return }
 } else {
     git -C $repo pull -q --ff-only
